@@ -28,7 +28,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         app.config["CORS_AUTOMATIC_OPTIONS"] = True
 
         CORS(app)
-        Session(app, interface=InMemorySessionInterface(cookie_name="test_session"))
+        Session(app, interface=InMemorySessionInterface(
+            cookie_name="test_session"))
         digest_auth = HTTPDigestAuth()
 
         @digest_auth.get_password
@@ -227,8 +228,10 @@ class HTTPAuthTestCase(unittest.TestCase):
         )
         self.assertEqual(response.content, b"digest_auth:john")
         self.assertEqual(
-            verify_nonce_called, ["not a good nonce"], "Should have verified the nonce."
+            verify_nonce_called, ["not a good nonce"],
+            "Should have verified the nonce."
         )
         self.assertEqual(
-            verify_opaque_called, ["some opaque"], "Should have verified the opaque."
+            verify_opaque_called, ["some opaque"],
+            "Should have verified the opaque."
         )

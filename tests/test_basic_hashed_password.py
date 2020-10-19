@@ -39,7 +39,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         @app.route("/basic-custom")
         @basic_custom_auth.login_required
         def basic_custom_auth_route(request):
-            return text(f"basic_custom_auth:{basic_custom_auth.username(request)}")
+            return text(
+                f"basic_custom_auth:{basic_custom_auth.username(request)}")
 
         self.app = app
         self.basic_custom_auth = basic_custom_auth
@@ -50,7 +51,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         req, response = self.client.get(
             "/basic-custom", headers={"Authorization": "Basic " + creds}
         )
-        self.assertEqual(response.content.decode("utf-8"), "basic_custom_auth:john")
+        self.assertEqual(response.content.decode("utf-8"),
+                         "basic_custom_auth:john")
 
     def test_basic_custom_auth_login_valid(self):
         creds = base64.b64encode(b"john:hello").decode("utf-8")

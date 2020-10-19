@@ -30,9 +30,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         @app.route("/digest-with-realm")
         @digest_auth_my_realm.login_required
         def digest_auth_my_realm_route(request):
-            return text(
-                f"digest_auth_my_realm:{digest_auth_my_realm.username(request)}"
-            )
+            return text(f"digest_auth_my_realm:"
+                        f"{digest_auth_my_realm.username(request)}")
 
         self.app = app
         self.client = app.test_client
@@ -43,7 +42,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         self.assertTrue("WWW-Authenticate" in response.headers)
         self.assertTrue(
             re.match(
-                r'^Digest realm="My Realm",' 'nonce="[0-9a-f]+",opaque="[0-9a-f]+"$',
+                r'^Digest realm="My Realm",'
+                'nonce="[0-9a-f]+",opaque="[0-9a-f]+"$',
                 response.headers["WWW-Authenticate"],
             )
         )
@@ -64,7 +64,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         self.assertTrue("WWW-Authenticate" in response.headers)
         self.assertTrue(
             re.match(
-                r'^Digest realm="My Realm",' r'nonce="[0-9a-f]+",opaque="[0-9a-f]+"$',
+                r'^Digest realm="My Realm",'
+                r'nonce="[0-9a-f]+",opaque="[0-9a-f]+"$',
                 response.headers["WWW-Authenticate"],
             )
         )

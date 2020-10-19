@@ -35,10 +35,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         def basic_verify_auth_route(request):
             anon = basic_verify_auth.username(request) == ""
             return text(
-                "basic_verify_auth:"
-                + basic_verify_auth.username(request)
-                + " anon:"
-                + str(anon)
+                f"basic_verify_auth:{basic_verify_auth.username(request)} "
+                f"anon:{anon}"
             )
 
         self.app = app
@@ -50,7 +48,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         req, response = self.client.get(
             "/basic-verify", headers={"Authorization": "Basic " + creds}
         )
-        self.assertEqual(response.content, b"basic_verify_auth:susan anon:False")
+        self.assertEqual(response.content,
+                         b"basic_verify_auth:susan anon:False")
 
     def test_verify_auth_login_empty(self):
         req, response = self.client.get("/basic-verify")

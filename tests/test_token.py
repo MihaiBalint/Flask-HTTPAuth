@@ -21,7 +21,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         @token_auth.error_handler
         def error_handler(request):
             return text(
-                "error", status=401, headers={"WWW-Authenticate": 'MyToken realm="Foo"'}
+                "error", status=401,
+                headers={"WWW-Authenticate": 'MyToken realm="Foo"'}
             )
 
         @app.route("/")
@@ -41,7 +42,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         rq, response = self.client.get("/protected")
         self.assertEqual(response.status, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'MyToken realm="Foo"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'MyToken realm="Foo"')
 
     def test_token_auth_ignore_options(self):
         rq, response = self.client.options("/protected")
@@ -50,23 +52,27 @@ class HTTPAuthTestCase(unittest.TestCase):
 
     def test_token_auth_login_valid(self):
         rq, response = self.client.get(
-            "/protected", headers={"Authorization": "MyToken this-is-the-token!"}
+            "/protected",
+            headers={"Authorization": "MyToken this-is-the-token!"}
         )
         self.assertEqual(response.content.decode("utf-8"), "token_auth")
 
     def test_token_auth_login_valid_different_case(self):
         rq, response = self.client.get(
-            "/protected", headers={"Authorization": "mytoken this-is-the-token!"}
+            "/protected",
+            headers={"Authorization": "mytoken this-is-the-token!"}
         )
         self.assertEqual(response.content.decode("utf-8"), "token_auth")
 
     def test_token_auth_login_invalid_token(self):
         rq, response = self.client.get(
-            "/protected", headers={"Authorization": "MyToken this-is-not-the-token!"}
+            "/protected",
+            headers={"Authorization": "MyToken this-is-not-the-token!"}
         )
         self.assertEqual(response.status, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'MyToken realm="Foo"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'MyToken realm="Foo"')
 
     def test_token_auth_login_invalid_scheme(self):
         rq, response = self.client.get(
@@ -74,7 +80,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         )
         self.assertEqual(response.status, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'MyToken realm="Foo"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'MyToken realm="Foo"')
 
     def test_token_auth_login_invalid_header(self):
         rq, response = self.client.get(
@@ -82,7 +89,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         )
         self.assertEqual(response.status, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'MyToken realm="Foo"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'MyToken realm="Foo"')
 
     def test_token_auth_login_invalid_no_callback(self):
         token_auth2 = HTTPTokenAuth("Token", realm="foo")
@@ -93,8 +101,10 @@ class HTTPAuthTestCase(unittest.TestCase):
             return text("token_auth2")
 
         rq, response = self.client.get(
-            "/protected2", headers={"Authorization": "Token this-is-the-token!"}
+            "/protected2",
+            headers={"Authorization": "Token this-is-the-token!"}
         )
         self.assertEqual(response.status, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'Token realm="foo"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'Token realm="foo"')

@@ -24,7 +24,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         app = Sanic(__name__)
         app.config["SECRET_KEY"] = "my secret"
 
-        Session(app, interface=InMemorySessionInterface(cookie_name="test_session"))
+        Session(app, interface=InMemorySessionInterface(
+            cookie_name="test_session"))
         digest_auth_ha1_pw = HTTPDigestAuth(use_ha1_pw=True)
 
         @digest_auth_ha1_pw.get_password
@@ -43,7 +44,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         @app.route("/digest_ha1_pw")
         @digest_auth_ha1_pw.login_required
         def digest_auth_ha1_pw_route(request):
-            return text(f"digest_auth_ha1_pw:{digest_auth_ha1_pw.username(request)}")
+            return text(
+                f"digest_auth_ha1_pw:{digest_auth_ha1_pw.username(request)}")
 
         self.app = app
         self.client = app.test_client
