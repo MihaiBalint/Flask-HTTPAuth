@@ -8,7 +8,7 @@ The root URL for this application can be accessed via basic auth, providing
 username and password, or via token auth, providing a bearer JWS token.
 """
 import hashlib
-from sanic import Sanic
+from sanic import Sanic, response
 from sanic_httpauth import HTTPBasicAuth, HTTPTokenAuth, MultiAuth
 from itsdangerous import TimedJSONWebSignatureSerializer as JWS
 
@@ -48,7 +48,7 @@ def verify_password(username, password):
 @token_auth.verify_token
 def verify_token(token):
     try:
-        return "username" in token_serializer.loads(token)
+        return "username" in jws.loads(token)
     except:  # noqa: E722
         return False
 
@@ -58,10 +58,10 @@ def verify_token(token):
 def index(request):
     username = basic_auth.username(request)
     if not username:
-        data = token_serializer.loads(token_auth.token(request))
+        data = jws.loads(token_auth.token(request))
         username = data["username"]
 
-    return f"Hello, {username}!"
+    return response.text(f"Hello, {username}!")
 
 
 if __name__ == "__main__":

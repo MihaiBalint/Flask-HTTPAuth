@@ -4,6 +4,7 @@ sanic_httpauth
 
 This module provides Basic and Digest HTTP authentication for Sanic routes.
 
+:copyright: (C) 2020 by Svitlana Kost.
 :copyright: (C) 2019 by Mihai Balint.
 :copyright: (C) 2014 by Miguel Grinberg.
 :license:   MIT, see LICENSE for more details.
@@ -52,7 +53,8 @@ class HTTPAuth(object):
                 # if user didn't set status code, use 401
                 res.status = 401
             if "WWW-Authenticate" not in res.headers.keys():
-                res.headers["WWW-Authenticate"] = self.authenticate_header(request)
+                res.headers["WWW-Authenticate"] = self.authenticate_header(
+                    request)
             return res
 
         self.auth_error_callback = decorated
@@ -65,7 +67,8 @@ class HTTPAuth(object):
         auth = parse_authorization_header(request.headers.get("Authorization"))
         try:
             if auth is None and "Authorization" in request.headers:
-                auth_type, value = request.headers["Authorization"].split(None, 1)
+                auth_headers = request.headers["Authorization"]
+                auth_type, value = auth_headers.split(None, 1)
                 auth = Authorization(auth_type, {"token": value})
         except ValueError:
             # The Authorization header is either empty or has no token
@@ -90,15 +93,16 @@ class HTTPAuth(object):
     def login_required(self, f):
         @wraps(f)
         def decorated(*args, **kwargs):
+            # print(*args, **kwargs)
             request = get_request(*args, **kwargs)
 
             auth = self.get_auth(request)
-            request["authorization"] = auth
+            request.ctx.authorization = auth
 
-            # Sanic-CORS normally handles OPTIONS requests on its own, but in the
-            # case it is configured to forward those to the application, we
-            # need to ignore authentication headers and let the request through
-            # to avoid unwanted interactions with CORS.
+            # Sanic-CORS normally handles OPTIONS requests on its own,
+            # but in the case it is configured to forward those to the
+            # application, we need to ignore authentication headers and let
+            # the request through to avoid unwanted interactions with CORS.
             if request.method != "OPTIONS":  # pragma: no cover
                 password = self.get_auth_password(auth)
 
@@ -110,9 +114,9 @@ class HTTPAuth(object):
         return decorated
 
     def username(self, request):
-        if not request["authorization"]:
+        if not request.ctx.authorization:
             return ""
-        return request["authorization"].username
+        return request.ctx.authorization.username
 
 
 class HTTPBasicAuth(HTTPAuth):
@@ -145,11 +149,12 @@ class HTTPBasicAuth(HTTPAuth):
             try:
                 client_password = self.hash_password_callback(client_password)
             except TypeError:
-                client_password = self.hash_password_callback(username, client_password)
+                client_password = self.hash_password_callback(
+                    username, client_password)
         return (
-            client_password is not None
-            and stored_password is not None
-            and safe_str_cmp(client_password, stored_password)
+            (client_password is not None and
+             stored_password is not None and
+             safe_str_cmp(client_password, stored_password))
         )
 
 
@@ -172,21 +177,21 @@ class HTTPDigestAuth(HTTPAuth):
             return md5(str(self.random.random()).encode("utf-8")).hexdigest()
 
         def default_generate_nonce(request):
-            request["session"]["auth_nonce"] = _generate_random()
-            return request["session"]["auth_nonce"]
+            request.ctx.session["auth_nonce"] = _generate_random()
+            return request.ctx.session["auth_nonce"]
 
         def default_verify_nonce(request, nonce):
-            session_nonce = request["session"].get("auth_nonce")
+            session_nonce = request.ctx.session.get("auth_nonce")
             if nonce is None or session_nonce is None:
                 return False
             return safe_str_cmp(nonce, session_nonce)
 
         def default_generate_opaque(request):
-            request["session"]["auth_opaque"] = _generate_random()
-            return request["session"]["auth_opaque"]
+            request.ctx.session["auth_opaque"] = _generate_random()
+            return request.ctx.session["auth_opaque"]
 
         def default_verify_opaque(request, opaque):
-            session_opaque = request["session"].get("auth_opaque")
+            session_opaque = request.ctx.session.get("auth_opaque")
             if opaque is None or session_opaque is None:
                 return False
             return safe_str_cmp(opaque, session_opaque)
@@ -232,13 +237,13 @@ class HTTPDigestAuth(HTTPAuth):
 
     def authenticate(self, request, auth, stored_password_or_ha1):
         if (
-            not auth
-            or not auth.username
-            or not auth.realm
-            or not auth.uri
-            or not auth.nonce
-            or not auth.response
-            or not stored_password_or_ha1
+            not auth or
+            not auth.username or
+            not auth.realm or
+            not auth.uri or
+            not auth.nonce or
+            not auth.response or
+            not stored_password_or_ha1
         ):
             return False
         if not (self.verify_nonce_callback(request, auth.nonce)) or not (
@@ -248,11 +253,11 @@ class HTTPDigestAuth(HTTPAuth):
         if self.use_ha1_pw:
             ha1 = stored_password_or_ha1
         else:
-            a1 = auth.username + ":" + auth.realm + ":" + stored_password_or_ha1
+            a1 = ":".join([auth.username, auth.realm, stored_password_or_ha1])
             ha1 = md5(a1.encode("utf-8")).hexdigest()
-        a2 = request.method + ":" + auth.uri
+        a2 = ":".join([request.method, auth.uri])
         ha2 = md5(a2.encode("utf-8")).hexdigest()
-        a3 = ha1 + ":" + auth.nonce + ":" + ha2
+        a3 = ":".join([ha1, auth.nonce, ha2])
         response = md5(a3.encode("utf-8")).hexdigest()
         return safe_str_cmp(response, auth.response)
 
@@ -277,9 +282,9 @@ class HTTPTokenAuth(HTTPAuth):
         return False
 
     def token(self, request):
-        if not request["authorization"]:
+        if not request.ctx.authorization:
             return ""
-        return request["authorization"].get("token")
+        return request.ctx.authorization.get("token")
 
 
 class MultiAuth(object):
@@ -294,7 +299,8 @@ class MultiAuth(object):
             selected_auth = None
             if "Authorization" in request.headers:
                 try:
-                    scheme, creds = request.headers["Authorization"].split(None, 1)
+                    auth_headers = request.headers["Authorization"]
+                    scheme, creds = auth_headers.split(None, 1)
                 except ValueError:
                     # malformed Authorization header
                     pass

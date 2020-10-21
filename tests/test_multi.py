@@ -25,7 +25,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         @token_auth.error_handler
         def error_handler(request):
             return text(
-                "error", status=401, headers={"WWW-Authenticate": 'MyToken realm="Foo"'}
+                "error", status=401,
+                headers={"WWW-Authenticate": 'MyToken realm="Foo"'}
             )
 
         @app.route("/")
@@ -70,17 +71,20 @@ class HTTPAuthTestCase(unittest.TestCase):
 
     def test_multi_auth_login_valid_token(self):
         req, response = self.client.get(
-            "/protected", headers={"Authorization": "MyToken this-is-the-token!"}
+            "/protected",
+            headers={"Authorization": "MyToken this-is-the-token!"}
         )
         self.assertEqual(response.content.decode("utf-8"), "access granted")
 
     def test_multi_auth_login_invalid_token(self):
         req, response = self.client.get(
-            "/protected", headers={"Authorization": "MyToken this-is-not-the-token!"}
+            "/protected",
+            headers={"Authorization": "MyToken this-is-not-the-token!"}
         )
         self.assertEqual(response.status_code, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'MyToken realm="Foo"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'MyToken realm="Foo"')
 
     def test_multi_auth_login_invalid_scheme(self):
         req, response = self.client.get(

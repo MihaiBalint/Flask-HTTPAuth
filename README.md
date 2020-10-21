@@ -19,7 +19,7 @@ Basic authentication example
 
 ```python
 import hashlib
-from sanic import Sanic
+from sanic import Sanic, response
 from sanic_httpauth import HTTPBasicAuth
 
 app = Sanic(__name__)
@@ -48,7 +48,7 @@ def verify_password(username, password):
 @app.route("/")
 @auth.login_required
 def index(request):
-    return "Hello, %s!" % auth.username()
+    return response.text(f"Hello, {auth.username(request)}!")
 
 
 if __name__ == "__main__":
@@ -61,7 +61,7 @@ Digest authentication example
 -----------------------------
 
 ```python
-from sanic import Sanic
+from sanic import Sanic, response
 from sanic_httpauth import HTTPDigestAuth
 from sanic_session import Session
 
@@ -83,7 +83,7 @@ def get_pw(username):
 @app.route("/")
 @auth.login_required
 def index(request):
-    return "Hello, %s!" % auth.username()
+    return response.text(f"Hello, {auth.username(request)}!")
 
 
 if __name__ == "__main__":

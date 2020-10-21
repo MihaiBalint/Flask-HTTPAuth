@@ -12,7 +12,7 @@ one of the tokens:
 
 The response should include the username, which is obtained from the token.
 """
-from sanic import Sanic
+from sanic import Sanic, response
 from sanic_httpauth import HTTPTokenAuth
 from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 
@@ -42,7 +42,7 @@ def verify_token(token):
 def index(request):
     data = token_serializer.loads(auth.token(request))
     username = data["username"]
-    return f"Hello, {username}!"
+    return response.text(f"Hello, {username}!")
 
 
 if __name__ == "__main__":

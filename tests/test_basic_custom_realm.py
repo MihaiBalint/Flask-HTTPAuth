@@ -36,7 +36,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         @app.route("/basic-with-realm")
         @basic_auth_my_realm.login_required
         def basic_auth_my_realm_route(request):
-            return text(f"basic_auth_my_realm:{basic_auth_my_realm.username(request)}")
+            return text(
+                f"basic_auth_my_realm:{basic_auth_my_realm.username(request)}")
 
         self.app = app
         self.basic_auth_my_realm = basic_auth_my_realm
@@ -46,7 +47,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         req, response = self.client.get("/basic-with-realm")
         self.assertEqual(response.status_code, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'Basic realm="My Realm"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'Basic realm="My Realm"')
         self.assertEqual(response.content.decode("utf-8"), "custom error")
 
     def test_basic_auth_login_valid(self):
@@ -54,7 +56,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         req, response = self.client.get(
             "/basic-with-realm", headers={"Authorization": "Basic " + creds}
         )
-        self.assertEqual(response.content.decode("utf-8"), "basic_auth_my_realm:john")
+        self.assertEqual(response.content.decode("utf-8"),
+                         "basic_auth_my_realm:john")
 
     def test_basic_auth_login_invalid(self):
         creds = base64.b64encode(b"john:bye").decode("utf-8")
@@ -63,4 +66,5 @@ class HTTPAuthTestCase(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
-        self.assertEqual(response.headers["WWW-Authenticate"], 'Basic realm="My Realm"')
+        self.assertEqual(response.headers["WWW-Authenticate"],
+                         'Basic realm="My Realm"')

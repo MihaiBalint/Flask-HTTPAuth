@@ -9,7 +9,7 @@ gain access, you can use (username=john, password=hello) or
 (username=susan, password=bye).
 """
 import hashlib
-from sanic import Sanic
+from sanic import Sanic, response
 from sanic_httpauth import HTTPBasicAuth
 
 app = Sanic(__name__)
@@ -38,7 +38,7 @@ def verify_password(username, password):
 @app.route("/")
 @auth.login_required
 def index(request):
-    return "Hello, %s!" % auth.username(request)
+    return response.text(f"Hello, {auth.username(request)}!")
 
 
 if __name__ == "__main__":
