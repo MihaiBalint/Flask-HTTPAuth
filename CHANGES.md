@@ -1,5 +1,8 @@
 # Flask-HTTPAuth change log
 
+**Release 0.2.0** - 2020-10-21
+- Library fixes to get it working with the latest version of Sanic (thanks **KostSvitlana**)
+
 **Release 0.1.2** - 2019-06-28
 - Fix @auth.login_required when applied on instance methods
 
