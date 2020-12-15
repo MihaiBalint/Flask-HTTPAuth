@@ -8,7 +8,6 @@ from sanic.response import text
 from sanic_cors import CORS
 from sanic_httpauth import HTTPDigestAuth
 from sanic_httpauth_compat import parse_dict_header
-from sanic_session import InMemorySessionInterface, Session
 
 
 def md5(str):
@@ -29,9 +28,7 @@ class HTTPAuthTestCase(unittest.TestCase):
         app.config["CORS_AUTOMATIC_OPTIONS"] = True
 
         CORS(app)
-        Session(app, interface=InMemorySessionInterface(
-            cookie_name="test_session"))
-        digest_auth = HTTPDigestAuth(qop="auth")
+        digest_auth = HTTPDigestAuth(use_session=False, qop="auth")
 
         @digest_auth.get_password
         def get_digest_password_2(username):
@@ -66,7 +63,6 @@ class HTTPAuthTestCase(unittest.TestCase):
                 response.headers["WWW-Authenticate"],
             )
         )
-        self.assertTrue(response.cookies.get("test_session") is not None)
 
     def test_digest_auth_ignore_options(self):
         req, response = self.client.options("/digest")
@@ -80,8 +76,7 @@ class HTTPAuthTestCase(unittest.TestCase):
             "47c67cc7bedf6bc754f044f77f32b99e"]
         req, response = self.client.get("/digest")
         self.assertTrue(response.status_code == 401)
-        header = response.headers["WWW-Authenticate"]
-        print(header)
+        header = response.headers.get("WWW-Authenticate")
         auth_type, auth_info = header.split(None, 1)
         d = parse_dict_header(auth_info)
 
@@ -91,39 +86,34 @@ class HTTPAuthTestCase(unittest.TestCase):
             "/digest",
             headers={
                 "Authorization": 'Digest username="john",realm="{0}",'
-                'nonce="{1}", qop="auth", uri="/digest",response="{2}",'
-                'opaque="{3}",nc="00000001",cnonce="5fd0a782"'.format(
+                'nonce="{1}",uri="/digest",response="{2}",'
+                'opaque="{3}", nc="00000001",cnonce="5fd0a782"'.format(
                     d["realm"], d["nonce"], auth_response, d["opaque"]
                 )
             },
-            cookies={"test_session": response.cookies.get("test_session")},
         )
+        print(response.content)
         self.assertEqual(response.content, b"digest_auth:john")
 
     def test_digest_auth_login_bad_realm(self):
         req, response = self.client.get("/digest")
         self.assertTrue(response.status_code == 401)
-        self.assertTrue(response.cookies.get("test_session") is not None)
-        header = (f'Digest realm="Wrong Realm", '
-                  f'nonce="9549bf6d4fd6206e2945e8501481ddd5", qop="auth", '
-                  f'nc="00000001", cnonce="5fd0a782", '
-                  f'opaque="47c67cc7bedf6bc754f044f77f32b99e"')
-        response.headers["WWW-Authenticate"] = header
+        self.assertTrue(response.cookies is not None)
+        header = response.headers.get("WWW-Authenticate")
         auth_type, auth_info = header.split(None, 1)
         d = parse_dict_header(auth_info)
 
-        auth_response = ""
+        auth_response = md5("Authentication").hexdigest()
 
         req, response = self.client.get(
             "/digest",
             headers={
                 "Authorization": 'Digest username="john",realm="{0}",'
-                'nonce="{1}",uri="/digest",response="{2}",'
+                'nonce="{1}",qop= "auth",uri="/digest",response="{2}",'
                 'opaque="{3}"'.format(
                     d["realm"], d["nonce"], auth_response, d["opaque"]
                 )
             },
-            cookies={"test_session": response.cookies.get("test_session")},
         )
         self.assertEqual(response.status_code, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
@@ -138,17 +128,11 @@ class HTTPAuthTestCase(unittest.TestCase):
     def test_digest_auth_login_invalid2(self):
         req, response = self.client.get("/digest")
         self.assertEqual(response.status_code, 401)
-        self.assertTrue(response.cookies.get("test_session") is not None)
         header = response.headers.get("WWW-Authenticate")
         auth_type, auth_info = header.split(None, 1)
         d = parse_dict_header(auth_info)
 
-        a1 = "david:" + "Authentication Required" + ":bye"
-        ha1 = md5(a1).hexdigest()
-        a2 = "GET:/digest"
-        ha2 = md5(a2).hexdigest()
-        a3 = ha1 + ":" + d["nonce"] + ":" + ha2
-        auth_response = md5(a3).hexdigest()
+        auth_response = md5("Authentication").hexdigest()
 
         req, response = self.client.get(
             "/digest",
@@ -159,7 +143,6 @@ class HTTPAuthTestCase(unittest.TestCase):
                     d["realm"], d["nonce"], auth_response, d["opaque"]
                 )
             },
-            cookies={"test_session": response.cookies.get("test_session")},
         )
         self.assertEqual(response.status_code, 401)
         self.assertTrue("WWW-Authenticate" in response.headers)
@@ -201,7 +184,7 @@ class HTTPAuthTestCase(unittest.TestCase):
 
         req, response = self.client.get("/digest")
         self.assertEqual(response.status_code, 401)
-        header = response.headers["WWW-Authenticate"]
+        header = response.headers.get("WWW-Authenticate")
         auth_type, auth_info = header.split(None, 1)
         d = parse_dict_header(auth_info)
 
@@ -214,12 +197,11 @@ class HTTPAuthTestCase(unittest.TestCase):
             "/digest",
             headers={
                 "Authorization": 'Digest username="john",realm="{0}",'
-                'nonce="{1}",qop="auth",uri="/digest",response="{2}",'
+                'nonce="{1}",uri="/digest",response="{2}",'
                 'opaque="{3}",nc="00000001",cnonce="5fd0a782"'.format(
                     d["realm"], d["nonce"], auth_response, d["opaque"]
                 )
             },
-            cookies={"test_session": response.cookies.get("test_session")},
         )
         self.assertEqual(response.content, b"digest_auth:john")
         self.assertEqual(

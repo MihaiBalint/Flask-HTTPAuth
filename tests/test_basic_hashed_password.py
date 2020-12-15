@@ -1,9 +1,10 @@
-import unittest
 import base64
+import unittest
 from hashlib import md5 as basic_md5
+
 from sanic import Sanic
-from sanic_httpauth import HTTPBasicAuth
 from sanic.response import text
+from sanic_httpauth import HTTPBasicAuth
 
 
 def md5(s):
