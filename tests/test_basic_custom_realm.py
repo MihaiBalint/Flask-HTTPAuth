@@ -1,8 +1,9 @@
-import unittest
 import base64
+import unittest
+
 from sanic import Sanic
-from sanic_httpauth import HTTPBasicAuth
 from sanic.response import text
+from sanic_httpauth import HTTPBasicAuth
 
 
 class HTTPAuthTestCase(unittest.TestCase):

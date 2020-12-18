@@ -1,11 +1,12 @@
 import unittest
 from hashlib import md5 as basic_md5
-from sanic import Sanic
-from sanic_session import Session, InMemorySessionInterface
-from sanic_httpauth import HTTPDigestAuth
-from sanic.response import text
+from unittest.mock import MagicMock
 
+from sanic import Sanic
+from sanic.response import text
+from sanic_httpauth import HTTPDigestAuth
 from sanic_httpauth_compat import parse_dict_header
+from sanic_session import InMemorySessionInterface, Session
 
 
 def md5(str):
@@ -23,10 +24,16 @@ class HTTPAuthTestCase(unittest.TestCase):
     def setUp(self):
         app = Sanic(__name__)
         app.config["SECRET_KEY"] = "my secret"
+        self.nonce = None
+        self.opaque = None
 
         Session(app, interface=InMemorySessionInterface(
             cookie_name="test_session"))
-        digest_auth_ha1_pw = HTTPDigestAuth(use_ha1_pw=True)
+
+        digest_auth_ha1_pw = HTTPDigestAuth(use_ha1_pw=True, qop=None)
+        digest_auth_ha1_pw._generate_random = MagicMock(
+            side_effect=["9549bf6d4fd6206e2945e8501481ddd5",
+                         "47c67cc7bedf6bc754f044f77f32b99e"])
 
         @digest_auth_ha1_pw.get_password
         def get_digest_password(username):
@@ -53,17 +60,14 @@ class HTTPAuthTestCase(unittest.TestCase):
     def test_digest_ha1_pw_auth_login_valid(self):
         req, response = self.client.get("/digest_ha1_pw")
         self.assertTrue(response.status_code == 401)
-        header = response.headers.get("WWW-Authenticate")
+        header = (f'Digest realm="Authentication Required", '
+                  f'nonce="9549bf6d4fd6206e2945e8501481ddd5", qop="None", '
+                  f'opaque="47c67cc7bedf6bc754f044f77f32b99e"')
+        response.headers["WWW-Authenticate"] = header
         auth_type, auth_info = header.split(None, 1)
         d = parse_dict_header(auth_info)
 
-        a1 = "john:" + d["realm"] + ":bye"
-        ha1 = md5(a1).hexdigest()
-        a2 = "GET:/digest_ha1_pw"
-        ha2 = md5(a2).hexdigest()
-        a3 = ha1 + ":" + d["nonce"] + ":" + ha2
-        auth_response = md5(a3).hexdigest()
-
+        auth_response = "7afa823fb21430c8acb89ed054a5add6"
         req, response = self.client.get(
             "/digest_ha1_pw",
             headers={

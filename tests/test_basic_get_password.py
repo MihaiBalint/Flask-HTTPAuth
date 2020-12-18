@@ -1,9 +1,10 @@
-import unittest
 import base64
+import unittest
+
 from sanic import Sanic
+from sanic.response import text
 from sanic_cors import CORS
 from sanic_httpauth import HTTPBasicAuth
-from sanic.response import text
 
 
 class HTTPAuthTestCase(unittest.TestCase):

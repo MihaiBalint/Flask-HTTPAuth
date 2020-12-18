@@ -13,7 +13,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         app.config["SECRET_KEY"] = "my secret"
         Session(app)
 
-        digest_auth_my_realm = HTTPDigestAuth(realm="My Realm", qop="")
+        digest_auth_my_realm = HTTPDigestAuth(
+            realm="My Realm", qop="auth", use_opaque=False)
 
         @digest_auth_my_realm.get_password
         def get_digest_password_3(username):
@@ -44,7 +45,7 @@ class HTTPAuthTestCase(unittest.TestCase):
         self.assertTrue(
             re.match(
                 r'^Digest realm="My Realm", '
-                r'nonce="[0-9a-f]+", qop="", opaque="[0-9a-f]+"$',
+                r'nonce="[0-9a-f]+", qop="auth"',
                 response.headers["WWW-Authenticate"],
             )
         )
@@ -66,7 +67,7 @@ class HTTPAuthTestCase(unittest.TestCase):
         self.assertTrue(
             re.match(
                 r'^Digest realm="My Realm", '
-                r'nonce="[0-9a-f]+", qop="", opaque="[0-9a-f]+"$',
+                r'nonce="[0-9a-f]+", qop="auth"',
                 response.headers["WWW-Authenticate"],
             )
         )

@@ -159,9 +159,15 @@ class HTTPBasicAuth(HTTPAuth):
 
 
 class HTTPDigestAuth(HTTPAuth):
-    def __init__(self, scheme=None, realm=None, use_ha1_pw=False):
+    def __init__(self, scheme=None, realm=None, use_ha1_pw=False, qop=None,
+                 use_session=True, use_opaque=True):
         super(HTTPDigestAuth, self).__init__(scheme or "Digest", realm)
         self.use_ha1_pw = use_ha1_pw
+        self.use_session = use_session
+        self.use_opaque = use_opaque
+        self.qop = qop
+        self.nonce = None
+        self.opaque = None
         self.random = SystemRandom()
         try:
             self.random.random()
@@ -173,25 +179,34 @@ class HTTPDigestAuth(HTTPAuth):
         self.generate_opaque_callback = None
         self.verify_opaque_callback = None
 
-        def _generate_random():
-            return md5(str(self.random.random()).encode("utf-8")).hexdigest()
-
         def default_generate_nonce(request):
-            request.ctx.session["auth_nonce"] = _generate_random()
-            return request.ctx.session["auth_nonce"]
+            self.nonce = self._generate_random()
+            if use_session:
+                request.ctx.session["auth_nonce"] = self.nonce
+            return self.nonce
 
         def default_verify_nonce(request, nonce):
-            session_nonce = request.ctx.session.get("auth_nonce")
+            if use_session:
+                session_nonce = request.ctx.session.get("auth_nonce")
+            else:
+                session_nonce = self.nonce
             if nonce is None or session_nonce is None:
                 return False
             return safe_str_cmp(nonce, session_nonce)
 
         def default_generate_opaque(request):
-            request.ctx.session["auth_opaque"] = _generate_random()
-            return request.ctx.session["auth_opaque"]
+            self.opaque = self._generate_random()
+            if use_session:
+                request.ctx.session["auth_opaque"] = self.opaque
+            return self.opaque
 
         def default_verify_opaque(request, opaque):
-            session_opaque = request.ctx.session.get("auth_opaque")
+            if not self.use_opaque:
+                return True
+            if use_session:
+                session_opaque = request.ctx.session.get("auth_opaque")
+            else:
+                session_opaque = self.opaque
             if opaque is None or session_opaque is None:
                 return False
             return safe_str_cmp(opaque, session_opaque)
@@ -200,6 +215,9 @@ class HTTPDigestAuth(HTTPAuth):
         self.generate_opaque(default_generate_opaque)
         self.verify_nonce(default_verify_nonce)
         self.verify_opaque(default_verify_opaque)
+
+    def _generate_random(self):
+        return md5(str(self.random.random()).encode("utf-8")).hexdigest()
 
     def generate_nonce(self, f):
         self.generate_nonce_callback = f
@@ -218,22 +236,25 @@ class HTTPDigestAuth(HTTPAuth):
         return f
 
     def get_nonce(self, request):
-        return self.generate_nonce_callback(request)
+        if self.generate_nonce_callback:
+            return self.generate_nonce_callback(request)
 
     def get_opaque(self, request):
-        return self.generate_opaque_callback(request)
+        if self.generate_opaque_callback:
+            return self.generate_opaque_callback(request)
 
     def generate_ha1(self, username, password):
         a1 = username + ":" + self.realm + ":" + password
-        a1 = a1.encode("utf-8")
-        return md5(a1).hexdigest()
+        return md5(a1.encode("utf-8")).hexdigest()
 
     def authenticate_header(self, request):
         nonce = self.get_nonce(request)
-        opaque = self.get_opaque(request)
-        return '{0} realm="{1}",nonce="{2}",opaque="{3}"'.format(
-            self.scheme, self.realm, nonce, opaque
-        )
+        header = (f'{self.scheme} realm="{self.realm}", nonce="{nonce}", '
+                  f'qop="{self.qop or ""}"')
+        if self.use_opaque:
+            opaque = self.get_opaque(request)
+            header = ', '.join([header, f'opaque="{opaque}"'])
+        return header
 
     def authenticate(self, request, auth, stored_password_or_ha1):
         if (
@@ -247,18 +268,26 @@ class HTTPDigestAuth(HTTPAuth):
         ):
             return False
         if not (self.verify_nonce_callback(request, auth.nonce)) or not (
-            self.verify_opaque_callback(request, auth.opaque)
-        ):
+                self.verify_opaque_callback(request, auth.opaque)):
             return False
         if self.use_ha1_pw:
             ha1 = stored_password_or_ha1
         else:
             a1 = ":".join([auth.username, auth.realm, stored_password_or_ha1])
             ha1 = md5(a1.encode("utf-8")).hexdigest()
-        a2 = ":".join([request.method, auth.uri])
-        ha2 = md5(a2.encode("utf-8")).hexdigest()
-        a3 = ":".join([ha1, auth.nonce, ha2])
-        response = md5(a3.encode("utf-8")).hexdigest()
+        if self.qop == "auth" or self.qop is None:
+            a2 = ":".join([request.method, auth.uri])
+            ha2 = md5(a2.encode("utf-8")).hexdigest()
+        elif self.qop == "auth-int":
+            raise NotImplementedError(
+                "Not Implemented digest auth with qop auth-int")
+        if self.qop == "auth" or self.qop == "auth-int":
+            a3 = ":".join([ha1, auth.nonce, auth.nc, auth.cnonce,
+                           self.qop, ha2])
+            response = md5(a3.encode("utf-8")).hexdigest()
+        else:
+            a3 = ":".join([ha1, auth.nonce, ha2])
+            response = md5(a3.encode("utf-8")).hexdigest()
         return safe_str_cmp(response, auth.response)
 
 
